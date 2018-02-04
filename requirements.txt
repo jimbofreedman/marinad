@@ -1,0 +1,6 @@
+soco==0.13
+flask==0.12.2
+python-forecastio==1.3.5
+upnpclient==0.0.7
+boto3==1.5.22
+
