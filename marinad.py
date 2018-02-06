@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import random
 import sys, socket, select, time
 import soco
 from datetime import datetime, timedelta
@@ -23,10 +24,12 @@ my_library = soco.music_library.MusicLibrary(my_bedroom_zone)
 def set_daily_playlist():
     playlists = [3, 4, 6, 7, 8, 9, 10]
     index = get_day_number() % len(playlists)
+    my_bedroom_zone.stop()
     my_bedroom_zone.clear_queue()
     my_bedroom_zone.add_uri_to_queue("file:///jffs/settings/savedqueues.rsq#{}".format(str(playlists[index])))
     my_bedroom_zone.play_mode = 'SHUFFLE'  # this is actually SHUFFLE and REPEAT
-    my_bedroom_zone.next()  # start with a random track
+    my_bedroom_zone.play_from_queue(random.randint(0, my_bedroom_zone.queue_size-1))
+    my_bedroom_zone.pause()
 
 
 volumes = {
@@ -68,9 +71,7 @@ def stop_music():
 @app.route("/play_music")
 def play_music():
     # start a new track instead of resuming half-way through whatever was playing when we leave
-    set_daily_playlist()
-    my_bedroom_zone.play()
-    my_bedroom_zone.next()
+    my_bedroom_zone.play_from_queue(random.randint(0, my_bedroom_zone.queue_size-1))
     return("Started music")
 
 
@@ -123,7 +124,7 @@ polly = session.client("polly")
 @app.route("/play_alarm")
 def play_alarm():
     def say_time(time):
-        return "<say-as interpret-as='time'>{}</say-as>".format(datetime.strftime(time, "%-I %p"))
+        return "<say-as interpret-as='time'>{}</say-as>".format(datetime.strftime(time, "%-I:%M %p"))
 
     def emphasize(text):
         return "<emphasis>{}</emphasis>".format(text)
@@ -164,7 +165,7 @@ def play_alarm():
 
             this_hour_summary = simplify_summary(weather_hour.summary)
             if (this_hour_summary != weather_start):
-                day_forecast = day_forecast + "{} until {}, ".format(weather_start, say_time(weather_hour.time))
+                day_forecast = day_forecast + "{} until {}, ".format(emphasize(weather_start), emphasize(say_time(weather_hour.time)))
                 weather_start = this_hour_summary
 
             if weather_hour.time.hour >= 23:
@@ -220,16 +221,16 @@ def play_alarm():
 
         print(response)
 
-    with open("010voice.mp3", "wb") as file:
+    with open("/tmp/010voice.mp3", "wb") as file:
         stream_data(response.get("AudioStream"), file)
 
     os.system('ffmpeg -y -i /tmp/010voice.mp3 -filter:a "volume=2" /tmp/011loudvoice.mp3')
-    os.system('ffmpeg -y -i concat:"000silence23.mp3|011loudvoice.mp3" -codec copy /tmp/012silencevoice.mp3')
-    os.system('ffmpeg -y -i 001quietsong.mp3 -i /tmp/012silencevoice.mp3 -filter_complex "[0:0][1:0] amix=inputs=2:duration=longest" /Volumes/videos/alarm.wav')
-    my_bedroom_zone.play_uri("x-file-cifs://volturnus/videos/alarm.wav")
-    my_bedroom_zone.play_mode("NORMAL")
+    os.system('ffmpeg -y -i concat:"000silence23.mp3|/tmp/011loudvoice.mp3" -codec copy /tmp/012silencevoice.mp3')
+    os.system('ffmpeg -y -i 001quietsong.mp3 -i /tmp/012silencevoice.mp3 -filter_complex "[0:0][1:0] amix=inputs=2:duration=longest" /home/pi/music/alarm.wav')
+   my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")    my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")
+    my_bedroom_zone.play_mode = "NORMAL"
     return "Playing alarm"
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host= '0.0.0.0')
