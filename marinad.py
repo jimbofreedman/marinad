@@ -227,7 +227,7 @@ def play_alarm():
     os.system('ffmpeg -y -i /tmp/010voice.mp3 -filter:a "volume=2" /tmp/011loudvoice.mp3')
     os.system('ffmpeg -y -i concat:"000silence23.mp3|/tmp/011loudvoice.mp3" -codec copy /tmp/012silencevoice.mp3')
     os.system('ffmpeg -y -i 001quietsong.mp3 -i /tmp/012silencevoice.mp3 -filter_complex "[0:0][1:0] amix=inputs=2:duration=longest" /home/pi/music/alarm.wav')
-   my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")    my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")
+    my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")    
     my_bedroom_zone.play_mode = "NORMAL"
     return "Playing alarm"
 
