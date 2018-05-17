@@ -8,6 +8,8 @@ import forecastio
 from contextlib import closing
 from flask import Flask
 import upnpclient
+import requests
+import pytz
 
 app = Flask(__name__)
 
@@ -130,7 +132,10 @@ def play_alarm():
         return "<emphasis>{}</emphasis>".format(text)
 
     def get_greeting():
-        now = datetime.now()
+        bst = pytz.timezone("Europe/London")
+        utc = pytz.timezone("UTC")
+        utc_now = utc.localize(datetime.utcnow())
+        now = utc_now.astimezone(bst)
         day_of_week = datetime.strftime(now, "%A")
         endings = [None, "st", "nd", "rd"]
         day = str(now.day) + ("th" if now.day > 3 else endings[now.day])
@@ -139,10 +144,11 @@ def play_alarm():
 
     def get_weather():
         def simplify_summary(summary):
+            summary = summary.lower()
             simplifications = {
-                "Partly Cloudy": "clear",
-                "Mostly Cloudy": "cloudy",
-                "Overcast": "cloudy"
+                "partly cloudy": "clear",
+                "mostly cloudy": "cloudy",
+                "overcast": "cloudy"
             }
             return simplifications[summary] if (summary in simplifications) else summary
 
@@ -179,7 +185,10 @@ def play_alarm():
         return "<s>{}, and will be {} {}</s>".format(current_weather, day_forecast, max_temp)
 
     def get_incidents():
-        return " There are no current incidents and you are not on call."
+        if (requests.get("https://backend.zoe.net/healthcheck/").status_code == requests.codes.ok):
+            return " The Zoe platform is operating normally."
+        else:
+            return " The Zoe platform is currently out of service."
 
     def get_appointments():
         return " You have no appointments before standup."
@@ -227,7 +236,7 @@ def play_alarm():
     os.system('ffmpeg -y -i /tmp/010voice.mp3 -filter:a "volume=2" /tmp/011loudvoice.mp3')
     os.system('ffmpeg -y -i concat:"000silence23.mp3|/tmp/011loudvoice.mp3" -codec copy /tmp/012silencevoice.mp3')
     os.system('ffmpeg -y -i 001quietsong.mp3 -i /tmp/012silencevoice.mp3 -filter_complex "[0:0][1:0] amix=inputs=2:duration=longest" /home/pi/music/alarm.wav')
-    my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")    
+    my_bedroom_zone.play_uri("x-file-cifs://volturnus/music/alarm.wav")
     my_bedroom_zone.play_mode = "NORMAL"
     return "Playing alarm"
 
